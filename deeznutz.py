@@ -110,7 +110,7 @@ def fast_download(download_list):
                 if count == total_count:
                     history["finished"][album_id]["finished"] = True
                 save_history()
-                print(f"[\033[1;32;40m<\033[0m] \033[1;32;40mFinished downloading: \033[1;33;40m{artist}/\033[1;34;40m{album}/\033[1;32;40m{filename[:filename.find('.')+1]}\033[1;35;40m{filename[filename.find('.')+1:]}\033[0m")
+                print(f"[\033[1;32;40m<\033[0m] \033[1;32;40mFinished downloading: \033[1;33;40m{artist}/\033[1;34;40m{album}/\033[1;35;40m{filename}\033[0m")
 
 if __name__ == "__main__":
     from gevent import monkey
