@@ -80,7 +80,7 @@ def download_queue(download_list):
 
 def download_track(meta):
     n, track, album = meta
-    dl_dir = f"{args.output.strip('/')}/{album['artist']['name']}/{album['artist']['name'] - album['title']}/"
+    dl_dir = f"{args.output.strip('/')}/{album['artist']['name']}/{album['artist']['name']} - {album['title']}/"
     filename = f"{n+1} - {track['title']}.mp3"
     filename = "".join([c for c in filename if c.isalpha() or c.isdigit() or c in ' []()-,.!?:;']).rstrip()
     out = album['artist']['name'], album['title'], str(album['id']), track['id'], filename, len(album['tracks']['data'])
