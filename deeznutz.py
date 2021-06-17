@@ -8,8 +8,6 @@ import argparse
 import json
 import os
 
-from pprint import pprint
-
 class MyProgressHandler(BaseProgressHandler):
     def __init__(self):
         pass
@@ -27,8 +25,8 @@ class MyProgressHandler(BaseProgressHandler):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='parse args')
-    parser.add_argument("--arl", "-a", help="ARL")
-    parser.add_argument("--file", "-f", type=argparse.FileType('r'), help="Input file containg a list of artists names separated by newlines")
+    parser.add_argument("--arl", "-a", required=True, help="arl key")
+    parser.add_argument("--file", "-f", required=True, type=argparse.FileType('r'), help="Input file containg a list of artists names separated by newlines")
     parser.add_argument("--history", default="history.json", help="File where download history will be stored")
     parser.add_argument("--workers", "-w", type=int, default=10, help="Number of workers to use for concurrent downloads")
     parser.add_argument("--output", "-o", default="download/", help="Output download directory")
@@ -66,7 +64,7 @@ def load_download_list(file, history):
     print(f"[\033[1;33;40m#\033[0m] Queueing {len(results)} artists for download.")
     return results
 
-def download_gen(download_list):
+def download_queue(download_list):
     for artist in download_list:
         for album_info in dz.get_artist_discography(artist['id'])['data']:
             album_id = str(album_info['ALB_ID'])
@@ -84,6 +82,7 @@ def download_track(meta):
     n, track, album = meta
     dl_dir = f"{args.output.strip('/')}/{album['artist']['name']}/{album['title']}/"
     filename = f"{n+1}. {track['title']}.mp3"
+    filename = "".join([c for c in filename if c.isalpha() or c.isdigit() or c in ' ()']).rstrip()
     out = album['artist']['name'], album['title'], str(album['id']), track['id'], filename, len(album['tracks']['data'])
     try:
         tk = dz.get_track(track['id'])['info']
@@ -92,11 +91,9 @@ def download_track(meta):
         return True, *out
     return False, *out
 
-def fast_download(download_list):
+def concurrent_download(download_list):
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = []
-        for meta in download_gen(download_list):
-            futures.append(executor.submit(download_track, meta))
+        futures = [executor.submit(download_track, meta) for meta in download_queue(download_list)]
         for future in concurrent.futures.as_completed(futures, timeout=240):
             error, artist, album, album_id, track_id, filename, count = future.result()
             if album_id not in history["finished"]:
@@ -116,11 +113,10 @@ if __name__ == "__main__":
     from gevent import monkey
     monkey.patch_all(thread=False, socket=False)
     args = parse_args()
-    arl = args.arl or os.environ['DEEZER_ARL']
     dz = Deezer()
-    user_info = dz.login_via_arl(arl)
+    user_info = dz.login_via_arl(args.arl)
     print(f"[\033[1;32;40m<\033[0m] Logged in as user {user_info['name']}")
     history = load_history(args.history)
     print(f"[\033[1;33;40m#\033[0m] Found {len([h for h in history['finished'] if history['finished'][h]['finished'] == True])} completed downloads")
     artist_to_download = load_download_list(args.file, history)
-    fast_download(artist_to_download)
+    concurrent_download(artist_to_download)
